@@ -46,21 +46,84 @@ Este panel interactivo permite visualizar y analizar los datos de campañas de m
 # Inicializar variables globales
 filtered_df = None
 df = None
+df_original = None
 
 # Cargar datos
 @st.cache_data(ttl=3600)
 def load_data():
     try:
-        df = pd.read_csv(r"C:\Users\Usuario\Documents\GitHub\analisis_campa-a_marketing\Data\marketingcampaigns_limpia.csv")        
-        return df
+        df_original = pd.read_csv(r"C:\Users\Usuario\Documents\GitHub\analisis_campa-a_marketing\Data\marketingcampaigns.csv", sep=',',on_bad_lines='skip')
+        df = pd.read_csv(r"C:\Users\Usuario\Documents\GitHub\analisis_campa-a_marketing\Data\marketingcampaigns_limpia.csv", sep=',', on_bad_lines='skip')
+        return df_original, df
     except Exception as e:
         st.error(f"Error loading data: {e}")
-        return None
+        return None, None
 
-   # Cargar los datos
+# Cargar los datos
 try:
     with st.spinner("Cargando datos..."):
-        df = load_data() 
+        df_original, df = load_data()  # Desempaquetar los dos DataFrames
+
+        if df_original is None or len(df_original) == 0:
+            st.warning("No hay datos disponibles con los filtros seleccionados. Por favor, ajusta los filtros.")
+        else:
+            main_tabs = st.tabs(["Información General"])   
+        
+    if df_original is not None and not df_original.empty:
+         # Asegurar que las columnas de fecha estén en formato datetime
+        if 'start_date' in df_original.columns:
+            df_original['start_date'] = pd.to_datetime(df_original['start_date'], errors='coerce')
+        if 'end_date' in df_original.columns:
+            df_original['end_date'] = pd.to_datetime(df_original['end_date'], errors='coerce')
+
+        with main_tabs[0]:
+            st.header("Información General de la Base de Datos")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Número de campañas", df_original['campaign_name'].nunique() if 'campaign_name' in df_original.columns else df_original.shape[0])
+            with col2:
+                st.metric("Valores nulos", df_original.isnull().sum().sum())
+            with col3:
+                st.metric("Registros duplicados", df_original.duplicated().sum())
+
+            st.subheader("Muestra de los datos")
+            st.dataframe(df_original)
+    else:
+        st.error("No se pudieron cargar los datos. Verifica que el archivo existe y tiene el formato correcto.")
+    
+    if df is not None and not df.empty:
+        if df_original is None or len(df_original) == 0:
+            st.warning("No hay datos disponibles con los filtros seleccionados. Por favor, ajusta los filtros.")
+        else:
+            main_tabs = st.tabs([" "])
+        
+        with main_tabs[0]:
+            st.header("Información de la Base de Datos tratados")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Número de campañas", df['campaign_name'].nunique() if 'campaign_name' in df.columns else df.shape[0])
+            with col2:
+                st.metric("Valores nulos", df.isnull().sum().sum())
+            with col3:
+                st.metric("Registros duplicados", df.duplicated().sum())
+
+            st.subheader("Muestra de los datos")
+            st.dataframe(df)
+    else:
+        st.error("No se pudieron cargar los datos. Verifica que el archivo existe y tiene el formato correcto.")
+except Exception as e:
+    st.error(f"Error al cargar o procesar los datos: {e}")
+    st.info("Verifica que el archivo 'marketingcampaigns_limpia.csv' esté disponible y tenga el formato correcto.")
+
+
+try:
+    with st.spinner("Cargando datos..."):
+        df = load_data()  # Solo obtener el DataFrame limpio
+
+        if df is None or len(df) == 0:
+            st.warning("No hay datos disponibles con los filtros seleccionados. Por favor, ajusta los filtros.")
+        else:
+            main_tabs = st.tabs(["Análisis de Campañas de Marketing"])
 
     if df is not None and not df.empty:
 
@@ -70,13 +133,8 @@ try:
                 return np.maximum(np.abs(values), min_size)
             else:
                 return max(abs(values), min_size)
-            
-        if len(df) == 0:
-            st.warning("No hay datos disponibles con los filtros seleccionados. Por favor, ajusta los filtros.")
-        else:
-            main_tabs = st.tabs(["Información General", "Análisis de Datos", "Conclusiones y Recomendaciones"])
-
-        # Filtros de fecha usando campos start_date y end_date
+        st.sidebar.header("Filtros")   
+         # Filtros de fecha usando campos start_date y end_date
         if 'start_date' in df.columns and 'end_date' in df.columns:
             df['start_date'] = pd.to_datetime(df['start_date'], errors='coerce')
             df['end_date'] = pd.to_datetime(df['end_date'], errors='coerce')
@@ -97,58 +155,121 @@ try:
             filtered_df = df.copy()
         df = filtered_df
 
-
-
+        
         # Filtros adicionales por 'channel', 'type' y 'target_audience'
         filtro_cols = []
         if 'channel' in df.columns:
             canales = df['channel'].dropna().unique()
-            canal_sel = st.sidebar.multiselect("Filtrar por canal", opciones := sorted(canales))
+            canal_sel = st.sidebar.multiselect("Canal", opciones := sorted(canales), format_func=lambda x: str(x))
             if canal_sel:
                 filtro_cols.append(df['channel'].isin(canal_sel))
-
-                   # Aplicar filtro silenciosamente (sin mostrar los datos)
-            filtered_df = filtered_df[filtered_df['channel'].isin(canal_sel)]
-
+                filtered_df = filtered_df[filtered_df['channel'].isin(canal_sel)]
 
         if 'type' in df.columns:
             tipos = df['type'].dropna().unique()
-            tipo_sel = st.sidebar.multiselect("Filtrar por tipo", opciones := sorted(tipos))
+            tipo_sel = st.sidebar.multiselect("Tipo", opciones := sorted(tipos), format_func=lambda x: str(x))
             if tipo_sel:
                 filtro_cols.append(df['type'].isin(tipo_sel))
-
-            # Aplicar filtro silenciosamente (sin mostrar los datos)
-            filtered_df = filtered_df[filtered_df['type'].isin(tipo_sel)]
-
+                filtered_df = filtered_df[filtered_df['type'].isin(tipo_sel)]
 
         if 'target_audience' in df.columns:
             targets = df['target_audience'].dropna().unique()
-            target_sel = st.sidebar.multiselect("Filtrar por audiencia objetivo", opciones := sorted(targets))
+            target_sel = st.sidebar.multiselect("Audiencia", opciones := sorted(targets), format_func=lambda x: str(x))
             if target_sel:
                 filtro_cols.append(df['target_audience'].isin(target_sel))
-
-                # Aplicar filtro silenciosamente (sin mostrar los datos)
-            filtered_df = filtered_df[filtered_df['target_audience'].isin(target_sel)]
+                filtered_df = filtered_df[filtered_df['target_audience'].isin(target_sel)]
 
         if filtro_cols:
             mask = np.logical_and.reduce(filtro_cols)
             df = df[mask]
 
-               # Mostrar información general en la primera pestaña
-        with main_tabs[0]:
-            st.header("Información General de la Base de Datos")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                 st.metric("Número de campañas", filtered_df['campaign_id'].nunique() if 'campaign_id' in filtered_df.columns else filtered_df.shape[0])
-            with col2:
-                st.metric("Presupuesto total", f"{filtered_df['budget'].sum():,.2f}€" if 'budget' in filtered_df.columns else "N/A")
-            with col3:
-                st.metric("días de campaña", f"{(filtered_df['end_date'] - filtered_df['start_date']).dt.days.max() if 'start_date' in filtered_df.columns and 'end_date' in filtered_df.columns else 'N/A'} días")
+                # Filtro por presupuesto (budget)
+        if 'budget' in df.columns:
+            min_budget, max_budget = st.sidebar.slider(
+            "Rango de presupuesto",
+            min_value=float(df['budget'].min()),
+            max_value=float(df['budget'].max()),
+            value=(float(df['budget'].min()), float(df['budget'].max())),
+            step=100.0
+            )
+        filtered_df = filtered_df[(filtered_df['budget'] >= min_budget) & (filtered_df['budget'] <= max_budget)]
+        
+                 # Filtro por roi_calculado
+        if 'roi_calculado' in df.columns:
+            min_budget, max_budget = st.sidebar.slider(
+            "Rango de roi",
+            min_value=float(df['roi_calculado'].min()),
+            max_value=float(df['roi_calculado'].max()),
+            value=(float(df['roi_calculado'].min()), float(df['roi_calculado'].max())),
+            step=100.0
+            )
+        filtered_df = filtered_df[(filtered_df['roi_calculado'] >= min_budget) & (filtered_df['roi_calculado'] <= max_budget)]
 
-        with main_tabs[1]:
+                         # Filtro por duration_Day
+        if 'duration_day' in df.columns:
+            min_budget, max_budget = st.sidebar.slider(
+            "Rango de día de duración",
+            min_value=float(df['duration_day'].min()),
+            max_value=float(df['duration_day'].max()),
+            value=(float(df['duration_day'].min()), float(df['duration_day'].max())),
+            step=100.0
+            )
+        filtered_df = filtered_df[(filtered_df['duration_day'] >= min_budget) & (filtered_df['duration_day'] <= max_budget)]
+            
+        if len(df) == 0:
+            st.warning("No hay datos disponibles con los filtros seleccionados. Por favor, ajusta los filtros.")
+        else:
+            main_tabs = st.tabs(["Análisis de Datos", "Interación con los datos", "Conclusiones y Recomendaciones"])
+
+        with main_tabs[4]:
             st.header("Análisis de Datos")
+            col1, col2 = st.columns(2)
 
-        with main_tabs[2]:
+            with col1:
+                # Pregunta y análisis: ¿Qué canal de marketing se utiliza con mayor frecuencia y cuál genera mejor ROI?
+                st.subheader("¿Qué canal de marketing se utiliza con mayor frecuencia y cuál genera mejor ROI?")
+
+                # Calcular la frecuencia de cada canal
+                if 'channel' in df.columns and 'roi_calculado' in df.columns:
+                    channel_counts = df['channel'].value_counts()
+                    roi_calculado = df.groupby('channel')['roi_calculado'].mean().sort_values(ascending=False)
+
+                    canal_mayor_frecuencia = channel_counts.idxmax()
+                    canal_mejor_roi = roi_calculado.idxmax()
+
+                    st.markdown(f"**Canal con mayor frecuencia:** {canal_mayor_frecuencia} ({channel_counts.max()} campañas)")
+                    st.markdown(f"**Canal con mejor ROI promedio:** {canal_mejor_roi} ({roi_calculado.max():.2f})")
+
+                    fig, ax1 = plt.subplots(figsize=(10, 6))
+                    color1 = '#1f77b4'
+                    color2 = '#ff7f0e'
+
+                    ax1.set_xlabel('Canal de Marketing')
+                    ax1.set_ylabel('Frecuencia', color=color1)
+                    sns.barplot(x=channel_counts.index, y=channel_counts.values, ax=ax1, alpha=0.7, color=color1)
+                    ax1.tick_params(axis='y', labelcolor=color1)
+                    ax1.set_xticklabels(channel_counts.index, rotation=45)
+
+                    ax2 = ax1.twinx()
+                    ax2.set_ylabel('ROI Promedio', color=color2)
+                    sns.pointplot(x=roi_calculado.index, y=roi_calculado.values, ax=ax2, color=color2)
+                    ax2.tick_params(axis='y', labelcolor=color2)
+
+                    plt.title('Frecuencia y ROI Promedio por Canal de Marketing')
+                    plt.tight_layout()
+                    st.pyplot(fig)
+                else:
+                    st.warning("No se encuentra la columna 'channel' o 'roi_calculado' en los datos.")
+
+            with col2:
+                # Pregunta y análisis: ¿Qué tipo de campaña genera más ingresos en promedio y cuál tiene mejor conversión?
+                st.subheader("¿Qué tipo de campaña genera más ingresos en promedio y cuál tiene mejor conversión?")
+
+      
+        with main_tabs[5]:
+            st.header("Interación con los Datos")
+
+        with main_tabs[6]:
             st.header("Conclusiones y Recomendaciones")
 
     else:
@@ -157,3 +278,7 @@ try:
 except Exception as e:
     st.error(f"Error al cargar o procesar los datos: {e}")
     st.info("Verifica que el archivo 'marketingcampaigns_limpia.csv' esté disponible y tenga el formato correcto.")
+
+
+
+
