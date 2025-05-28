@@ -217,24 +217,13 @@ try:
 
                 if 'roi_calculado' in df.columns:
                     fig, ax = plt.subplots(figsize=(10, 6))
-                    sns.histplot(df['roi_calculado'].dropna(), bins=30, kde=True, color=PRIMARY_COLOR, ax=ax)
-                    ax.set_title('Distribución del ROI Calculado entre Campañas')
-                    ax.set_xlabel('ROI Calculado')
-                    ax.set_ylabel('Frecuencia')
+                    sns.histplot(df['roi_calculado'], bins=30, kde=True, color=color1, ax=ax)
+                    ax.set_xscale('log')
+                    ax.set_title('Distribución del ROI entre las Campañas (Escala Logarítmica)', fontsize=16, fontweight='bold')
+                    ax.set_xlabel('ROI (escala log)', fontsize=14)
+                    ax.set_ylabel('Número de Campañas', fontsize=14)
                     plt.tight_layout()
                     st.pyplot(fig)
-
-                    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-                    numeric_cols = [col for col in numeric_cols if col != 'roi_calculado']
-                    if numeric_cols:
-                        corr = df[numeric_cols + ['roi_calculado']].corr()['roi_calculado'].drop('roi_calculado').sort_values(ascending=False)
-                        st.markdown("**Correlación de variables numéricas con el ROI Calculado:**")
-                        st.dataframe(corr.to_frame('Correlación').style.background_gradient(cmap='coolwarm', axis=0))
-
-                        st.markdown(f"**Variable más asociada positivamente:** {corr.idxmax()} ({corr.max():.2f})")
-                        st.markdown(f"**Variable más asociada negativamente:** {corr.idxmin()} ({corr.min():.2f})")
-                    else:
-                        st.info("No hay suficientes variables numéricas para analizar correlaciones.")
                 else:
                     st.info("No hay suficientes variables numéricas para analizar correlaciones.")
 
@@ -306,7 +295,7 @@ try:
                     else:
                         st.warning("No se encuentra la columna 'budget' o 'revenue' en los datos.")
 
-            with col1:
+            with col2:
                 st.subheader("¿Qué campañas tienen un ROI mayor a 0.5 y ingresos encima de 500,000?")
 
                 if 'channel' in df.columns and 'revenue' in df.columns:
@@ -337,7 +326,7 @@ try:
                 else:
                     st.warning("No se encuentra la columna 'roi' o 'revenue' en los datos.")
 
-            with col2:
+            with col1:
                 st.subheader("¿Existen patrones estacionales o temporales en el rendimiento de las campañas?")
 
                 if 'start_date' in df.columns and 'roi_calculado' in df.columns:
@@ -473,6 +462,34 @@ try:
                 st.pyplot(fig)
             else:
                 st.info("No hay columnas 'type' y 'roi_calculado' en los datos filtrados.")
+                
+            # Gráfica: Relación entre duración en días y audiencia
+            if 'duration_day' in filtered_df.columns and 'target_audience' in filtered_df.columns:
+                st.subheader("Relación entre Duración de la Campaña (días) y Audiencia")
+                tipo_grafica = st.radio(
+                    "Selecciona el tipo de gráfico para visualizar la relación:",
+                    ("Boxplot", "Violinplot", "Swarmplot"),
+                    horizontal=True,
+                    key="grafica_duracion_audiencia"
+                )
+                fig, ax = plt.subplots(figsize=(8, 4))
+                if tipo_grafica == "Boxplot":
+                    sns.boxplot(x='target_audience', y='duration_day', data=filtered_df, palette=[PRIMARY_COLOR, SECONDARY_COLOR], ax=ax)
+                elif tipo_grafica == "Violinplot":
+                    sns.violinplot(x='target_audience', y='duration_day', data=filtered_df, palette=[PRIMARY_COLOR, SECONDARY_COLOR], ax=ax)
+                else:  # Swarmplot
+                    # Swarmplot puede fallar si hay muchos datos, así que limitamos el tamaño
+                    sample_df = filtered_df.copy()
+                    if len(sample_df) > 500:
+                        sample_df = sample_df.sample(500, random_state=42)
+                    sns.swarmplot(x='target_audience', y='duration_day', data=sample_df, palette=[PRIMARY_COLOR, SECONDARY_COLOR], ax=ax)
+                ax.set_xlabel("Audiencia")
+                ax.set_ylabel("Duración (días)")
+                ax.set_title("Duración de la Campaña por Audiencia")
+                plt.tight_layout()
+                st.pyplot(fig)
+            else:
+                st.info("No hay columnas 'duration_day' y 'target_audience' en los datos filtrados.")
 
         with main_tabs[2]:
             st.header("Conclusiones y Recomendaciones")
