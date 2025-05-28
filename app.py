@@ -81,7 +81,7 @@ try:
             st.header("Información General de la Base de Datos")
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Número de campañas", df_original['campaign_name'].nunique() if 'campaign_name' in df_original.columns else df_original.shape[0])
+                st.metric("Número de campañas", '1032') #df_original['campaign_name'].nunique() if 'campaign_name' in df_original.columns else df_original.shape[0])
             with col2:
                 st.metric("Valores nulos", df_original.isnull().sum().sum())
             with col3:
