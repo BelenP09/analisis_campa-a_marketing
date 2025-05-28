@@ -41,7 +41,7 @@ st.title("Análisis Profesional de Campañas de Marketing")
 
 # Breve introducción
 st.markdown("""
-Este panel interactivo permite visualizar y analizar los datos de campañas de marketing, explorando características de diferentes canales, patrones de compra y segmentación de clientes para obtener insights clave que apoyen la toma de decisiones estratégicas.
+Este panel interactivo permite visualizar y analizar los datos de campañas de marketing, explorando características de diferentes canales, patrones de compra y segmentación de clientes para obtener conocimiento clave que apoyen la toma de decisiones estratégicas.
 """)
     
 # Inicializar variables globales
