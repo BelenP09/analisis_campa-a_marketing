@@ -37,7 +37,7 @@ st.markdown(
 )
 
 # Título principal
-st.title("Análisis Profesional de Campañas de Marketing")
+st.title("Análisis de Campañas de Marketing")
 
 # Breve introducción
 st.markdown("""
